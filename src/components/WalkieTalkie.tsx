@@ -33,9 +33,6 @@ const LANGUAGES: { code: string; label: string }[] = [
 	{ code: "ja", label: "Japanese" },
 	{ code: "ko", label: "Korean" },
 	{ code: "zh", label: "Chinese" },
-	{ code: "hi", label: "Hindi" },
-	{ code: "ar", label: "Arabic" },
-	{ code: "ru", label: "Russian" },
 ];
 
 function pickMimeType(): string | undefined {
@@ -70,7 +67,7 @@ function decodeBase64(data: string): ArrayBuffer {
 
 export default function WalkieTalkie() {
 	const [fromLang, setFromLang] = useState("en");
-	const [toLang, setToLang] = useState("es");
+	const [toLang, setToLang] = useState("pt");
 	const [recording, setRecording] = useState(false);
 	const [processing, setProcessing] = useState(false);
 	const [error, setError] = useState<string | null>(null);

@@ -12,7 +12,7 @@ import { resolveCartesiaVoiceId } from "#/server/translate/voices";
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 const WHISPER_MODEL = "whisper-large-v3-turbo";
-const LLM_MODEL = "llama-3.3-70b-versatile";
+const LLM_MODEL = "llama-3.1-8b-instant";
 const CARTESIA_BYTES_URL = "https://api.cartesia.ai/tts/bytes";
 
 export type PipelineSuccess = {
