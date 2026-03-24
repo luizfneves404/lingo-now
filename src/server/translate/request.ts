@@ -1,9 +1,7 @@
 import { getServerEnv, type ServerEnv } from "#/server/env";
 import { translateAccessDeniedMessage } from "#/server/translate/access";
-import {
-	type PipelineResult,
-	runSpeechTranslatePipeline,
-} from "#/server/translate/pipeline";
+import { logTranslatePerf, perfNowMs } from "#/server/translate/perf-log";
+import { runSpeechTranslatePipeline } from "#/server/translate/pipeline";
 
 export type TranslateSpeechSuccess = {
 	ok: true;
@@ -25,6 +23,7 @@ type TranslateSpeechRequestOptions = {
 	env?: ServerEnv;
 	getEnv?: () => ServerEnv;
 	runPipeline?: typeof runSpeechTranslatePipeline;
+	correlationId?: string;
 };
 
 function coerceAudioFile(value: unknown, mime: string): File | null {
@@ -78,19 +77,12 @@ function normalizeThrownError(error: unknown): TranslateSpeechFailure {
 	return failure(502, "Translation failed.");
 }
 
-function pipelineResultToResponse(
-	result: PipelineResult,
-): TranslateSpeechResult {
-	if (!result.ok) {
-		return failure(result.status, result.message);
-	}
-	return success(result.body, result.contentType);
-}
-
 export async function translateSpeechRequest(
 	formData: FormData,
 	options: TranslateSpeechRequestOptions = {},
 ): Promise<TranslateSpeechResult> {
+	const correlationId = options.correlationId ?? crypto.randomUUID();
+	const requestT0 = perfNowMs();
 	try {
 		const env = options.env ?? options.getEnv?.() ?? getServerEnv();
 		const mimeRaw = formData.get("mime");
@@ -104,29 +96,102 @@ export async function translateSpeechRequest(
 		const from = typeof fromRaw === "string" ? fromRaw.trim() : "";
 		const to = typeof toRaw === "string" ? toRaw.trim() : "";
 
+		logTranslatePerf(correlationId, "request.parsed", {
+			msSinceRequestStart:
+				Math.round((perfNowMs() - requestT0) * 1000) / 1000,
+			mimeLen: mime.length,
+			fromLen: from.length,
+			toLen: to.length,
+			audioBytes: audio?.size ?? 0,
+			hasAudio: Boolean(audio),
+		});
+
 		if (!audio || !from || !to) {
+			logTranslatePerf(correlationId, "request.validation_failed", {
+				reason: "missing_fields",
+			});
 			return failure(400, "Missing audio file or language codes.");
 		}
 
 		const deniedMessage = translateAccessDeniedMessage(formData, env);
 		if (deniedMessage) {
+			logTranslatePerf(correlationId, "request.access_denied", {});
 			return failure(401, deniedMessage);
 		}
 
 		if (env.TRANSLATE_DEV_ECHO) {
-			return success(await audio.arrayBuffer(), mimeContentType(mime));
+			const readT0 = perfNowMs();
+			const buf = await audio.arrayBuffer();
+			const readMs = Math.round((perfNowMs() - readT0) * 1000) / 1000;
+			logTranslatePerf(correlationId, "request.dev_echo.audio_buffer", {
+				ms: readMs,
+				audioBytes: buf.byteLength,
+			});
+			const encT0 = perfNowMs();
+			const res = success(buf, mimeContentType(mime));
+			logTranslatePerf(correlationId, "request.dev_echo.encoded", {
+				ms: Math.round((perfNowMs() - encT0) * 1000) / 1000,
+				outputBytes: buf.byteLength,
+				audioBase64Chars: res.audioBase64.length,
+			});
+			logTranslatePerf(correlationId, "request.done", {
+				ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
+				path: "dev_echo",
+				ok: true,
+			});
+			return res;
 		}
 
 		const runPipeline = options.runPipeline ?? runSpeechTranslatePipeline;
-		return pipelineResultToResponse(
-			await runPipeline({
+		const pipeT0 = perfNowMs();
+		const pipelineResult = await runPipeline(
+			{
 				audio,
 				from,
 				to,
 				mime,
-			}),
+			},
+			{ correlationId },
 		);
+		const pipeMs = Math.round((perfNowMs() - pipeT0) * 1000) / 1000;
+		logTranslatePerf(correlationId, "request.pipeline_returned", {
+			ms: pipeMs,
+			ok: pipelineResult.ok,
+			status: pipelineResult.ok ? 200 : pipelineResult.status,
+			outputBytes: pipelineResult.ok ? pipelineResult.body.byteLength : 0,
+		});
+
+		if (!pipelineResult.ok) {
+			logTranslatePerf(correlationId, "request.done", {
+				ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
+				path: "pipeline",
+				ok: false,
+				status: pipelineResult.status,
+			});
+			return pipelineResult;
+		}
+
+		const encT0 = perfNowMs();
+		const res = success(
+			pipelineResult.body,
+			pipelineResult.contentType,
+		);
+		logTranslatePerf(correlationId, "request.base64_encoded", {
+			ms: Math.round((perfNowMs() - encT0) * 1000) / 1000,
+			inputBytes: pipelineResult.body.byteLength,
+			audioBase64Chars: res.audioBase64.length,
+		});
+		logTranslatePerf(correlationId, "request.done", {
+			ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
+			path: "pipeline",
+			ok: true,
+		});
+		return res;
 	} catch (error) {
+		logTranslatePerf(correlationId, "request.error", {
+			ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
+			name: error instanceof Error ? error.name : "unknown",
+		});
 		return normalizeThrownError(error);
 	}
 }
