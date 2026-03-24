@@ -9,9 +9,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "#/components/ui/card";
+import { translateSpeech } from "#/server/translate/actions";
 
 const selectClassName =
 	"w-full rounded-md border border-[var(--line)] bg-white/90 px-3 py-2 text-sm text-[var(--sea-ink)] dark:bg-[var(--surface)]";
+
+const inputClassName = `${selectClassName} font-mono`;
 
 const PLACEHOLDER_CAPTIONS = `data:text/vtt;charset=utf-8,${encodeURIComponent("WEBVTT\n\n")}`;
 
@@ -44,6 +47,22 @@ function pickMimeType(): string | undefined {
 	return undefined;
 }
 
+function decodeBase64(data: string): ArrayBuffer {
+	if (typeof atob === "function") {
+		const binary = atob(data);
+		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+		return bytes.buffer.slice(
+			bytes.byteOffset,
+			bytes.byteOffset + bytes.byteLength,
+		);
+	}
+	const bytes = Uint8Array.from(Buffer.from(data, "base64"));
+	return bytes.buffer.slice(
+		bytes.byteOffset,
+		bytes.byteOffset + bytes.byteLength,
+	);
+}
+
 export default function WalkieTalkie() {
 	const [fromLang, setFromLang] = useState("en");
 	const [toLang, setToLang] = useState("es");
@@ -51,6 +70,7 @@ export default function WalkieTalkie() {
 	const [processing, setProcessing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+	const [accessPassword, setAccessPassword] = useState("");
 
 	const mediaStreamRef = useRef<MediaStream | null>(null);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -110,36 +130,25 @@ export default function WalkieTalkie() {
 			outgoing.append("from", fromLang);
 			outgoing.append("to", toLang);
 			outgoing.append("mime", mimeType);
+			outgoing.append("accessPassword", accessPassword);
 
 			try {
-				const res = await fetch("/api/translate", {
-					method: "POST",
-					body: outgoing,
-				});
+				const result = await translateSpeech({ data: outgoing });
 
-				const contentType = res.headers.get("content-type") || "";
-
-				if (!res.ok) {
-					let message = `Request failed (${res.status})`;
-					if (contentType.includes("application/json")) {
-						const data = (await res.json()) as { error?: string };
-						if (data.error) message = data.error;
-					} else {
-						const text = await res.text();
-						if (text.trim()) message = text.trim();
-					}
-					setError(message);
+				if (!result.ok) {
+					setError(result.message);
 					return;
 				}
 
-				if (!contentType.startsWith("audio/")) {
+				if (!result.contentType.startsWith("audio/")) {
 					setError("Translation service did not return audio.");
 					return;
 				}
 
-				const buffer = await res.arrayBuffer();
-				const outMime = contentType.split(";")[0]?.trim() || "audio/mpeg";
-				const url = URL.createObjectURL(new Blob([buffer], { type: outMime }));
+				const audioBuffer = decodeBase64(result.audioBase64);
+				const url = URL.createObjectURL(
+					new Blob([audioBuffer], { type: result.contentType }),
+				);
 				assignPlaybackUrl(url);
 				processedBlobsRef.current.add(blob);
 
@@ -152,7 +161,7 @@ export default function WalkieTalkie() {
 				processingLockRef.current = false;
 			}
 		},
-		[assignPlaybackUrl, fromLang, toLang],
+		[accessPassword, assignPlaybackUrl, fromLang, toLang],
 	);
 
 	const stopRecording = useCallback(() => {
@@ -251,6 +260,21 @@ export default function WalkieTalkie() {
 						</select>
 					</label>
 				</div>
+
+				<label className="flex flex-col gap-2">
+					<span className="text-sm font-medium text-(--sea-ink)">
+						Access password
+					</span>
+					<input
+						type="password"
+						autoComplete="off"
+						className={inputClassName}
+						value={accessPassword}
+						disabled={recording || processing}
+						onChange={(e) => setAccessPassword(e.target.value)}
+						placeholder="If the server requires TRANSLATE_ACCESS_PASSWORD"
+					/>
+				</label>
 
 				<div className="flex flex-wrap items-center gap-3">
 					<Button

@@ -1,6 +1,6 @@
 # Lingo Now
 
-Browser-based walkie-talkie translation: record speech, send it to your translation API, play the result, and flip languages for the next turn.
+Browser-based walkie-talkie translation: record speech, run Groq + Cartesia (or echo mode), play the result, and flip languages for the next turn.
 
 ## Run locally
 
@@ -15,12 +15,16 @@ pnpm dev
 pnpm build
 ```
 
-## Translation API
+## Translation
 
-`POST /api/translate` accepts multipart fields: `audio`, `from`, `to`, `mime`.
+The browser records audio and sends `FormData` with `audio`, `from`, `to`, `mime`, and optional `accessPassword` to a TanStack Start server function. Provider keys stay on the server, and the client receives a typed success or error result instead of parsing a raw HTTP endpoint response.
 
-- **`TRANSLATE_UPSTREAM_URL`** — URL of your speech-translation service (same field names). Optional **`TRANSLATE_UPSTREAM_KEY`** for `Authorization: Bearer …`.
-- **`TRANSLATE_DEV_ECHO=1`** — Echo the recording back (no real translation) for UI testing.
+**Environment validation:** If `**TRANSLATE_DEV_ECHO`** is not enabled, `**GROQ_API_KEY**` and `**CARTESIA_API_KEY**` must be set (non-empty). Built-in Cartesia voices are used for target languages **English**, **Portuguese**, and **Spanish**; for any other target language, fallbackVoiceId is used as the default voice. The first call to `getServerEnv()` throws if the combination is invalid (for example when handling a request). With `**TRANSLATE_DEV_ECHO=1`** (or `true`), those keys are optional.
+
+The server function uses one of:
+
+1. `**TRANSLATE_DEV_ECHO=1**` — Echo the recording back (no APIs) for UI testing.
+2. **Groq + Cartesia** — When echo is off, `**GROQ_API_KEY`** and `CARTESIA_API_KEY` are required. Speech is transcribed (Whisper), translated (Llama), then spoken (Cartesia Sonic). `CARTESIA_VERSION`, `**CARTESIA_MODEL_ID**`.
 
 ## Scripts
 
@@ -34,3 +38,4 @@ Add shadcn components with:
 ```bash
 pnpm dlx shadcn@latest add <component>
 ```
+
