@@ -1,4 +1,9 @@
-import { AlertCircleIcon, MicIcon, SquareIcon } from "lucide-react";
+import {
+	AlertCircleIcon,
+	ArrowLeftRightIcon,
+	MicIcon,
+	SquareIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
 import { Button } from "#/components/ui/button";
@@ -216,6 +221,11 @@ export default function WalkieTalkie() {
 		else void startRecording();
 	};
 
+	const swapLanguages = useCallback(() => {
+		setFromLang(toLang);
+		setToLang(fromLang);
+	}, [fromLang, toLang]);
+
 	return (
 		<Card className="border-(--line) bg-(--surface-strong) shadow-sm">
 			<CardHeader>
@@ -228,8 +238,8 @@ export default function WalkieTalkie() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-6">
-				<div className="grid gap-4 sm:grid-cols-2">
-					<label className="flex flex-col gap-2">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+					<label className="flex min-w-0 flex-1 flex-col gap-2">
 						<span className="text-sm font-medium text-(--sea-ink)">From</span>
 						<select
 							className={selectClassName}
@@ -244,7 +254,20 @@ export default function WalkieTalkie() {
 							))}
 						</select>
 					</label>
-					<label className="flex flex-col gap-2">
+					<div className="flex justify-center sm:shrink-0">
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							className="border-(--line) text-(--sea-ink)"
+							disabled={recording || processing}
+							aria-label="Swap from and to languages"
+							onClick={swapLanguages}
+						>
+							<ArrowLeftRightIcon />
+						</Button>
+					</div>
+					<label className="flex min-w-0 flex-1 flex-col gap-2">
 						<span className="text-sm font-medium text-(--sea-ink)">To</span>
 						<select
 							className={selectClassName}
