@@ -1,29 +1,17 @@
 import { getServerEnv, type ServerEnv } from "#/server/env";
 import { translateAccessDeniedMessage } from "#/server/translate/access";
 import { logTranslatePerf, perfNowMs } from "#/server/translate/perf-log";
-import { runSpeechTranslatePipeline } from "#/server/translate/pipeline";
+import {
+	runSpeechTranslatePipelineStream,
+	type TranslateSpeechStreamChunk,
+} from "#/server/translate/pipeline";
 
-export type TranslateSpeechSuccess = {
-	ok: true;
-	audioBase64: string;
-	contentType: string;
-};
+export type { TranslateSpeechStreamChunk } from "#/server/translate/pipeline-types";
 
-export type TranslateSpeechFailure = {
-	ok: false;
-	status: number;
-	message: string;
-};
-
-export type TranslateSpeechResult =
-	| TranslateSpeechSuccess
-	| TranslateSpeechFailure;
-
-type TranslateSpeechRequestOptions = {
+type TranslateSpeechStreamRequestOptions = {
 	env?: ServerEnv;
 	getEnv?: () => ServerEnv;
-	runPipeline?: typeof runSpeechTranslatePipeline;
-	correlationId?: string;
+	runPipelineStream?: typeof runSpeechTranslatePipelineStream;
 };
 
 function coerceAudioFile(value: unknown, mime: string): File | null {
@@ -40,158 +28,177 @@ function mimeContentType(mime: string): string {
 	return mime.split(";")[0]?.trim() || "audio/webm";
 }
 
-function encodeBase64(bytes: Uint8Array): string {
-	let binary = "";
-	for (let i = 0; i < bytes.length; i += 0x8000) {
-		const chunk = bytes.subarray(i, i + 0x8000);
-		binary += String.fromCharCode(...chunk);
+function devEchoPcmChunks(): Uint8Array[] {
+	const sampleRate = 44100;
+	const duration = 0.2;
+	const n = Math.floor(sampleRate * duration);
+	const buf = new Int16Array(n);
+	const freq = 440;
+	for (let i = 0; i < n; i++) {
+		buf[i] = Math.round(Math.sin(2 * Math.PI * freq * (i / sampleRate)) * 3000);
 	}
-	if (typeof btoa === "function") {
-		return btoa(binary);
+	const pcm = new Uint8Array(buf.buffer);
+	const mid = Math.ceil(pcm.length / 2);
+	if (pcm.length === 0) {
+		return [pcm];
 	}
-	return Buffer.from(binary, "binary").toString("base64");
-}
-
-function failure(status: number, message: string): TranslateSpeechFailure {
-	return { ok: false, status, message };
-}
-
-function success(
-	body: ArrayBuffer,
-	contentType: string,
-): TranslateSpeechSuccess {
-	return {
-		ok: true,
-		audioBase64: encodeBase64(new Uint8Array(body)),
-		contentType,
-	};
-}
-
-function normalizeThrownError(error: unknown): TranslateSpeechFailure {
-	if (error instanceof Error && error.message.trim()) {
-		if (error.message.startsWith("Invalid server environment:")) {
-			return failure(500, "Translation service is not configured correctly.");
-		}
-		return failure(502, error.message.trim());
+	if (mid >= pcm.length) {
+		return [pcm];
 	}
-	return failure(502, "Translation failed.");
+	return [pcm.subarray(0, mid), pcm.subarray(mid)];
 }
 
-export async function translateSpeechRequest(
+function normalizeThrownError(
+	status: number,
+	message: string,
+): TranslateSpeechStreamChunk {
+	return { kind: "error", status, message };
+}
+
+export function translateSpeechRequest(
 	formData: FormData,
-	options: TranslateSpeechRequestOptions = {},
-): Promise<TranslateSpeechResult> {
-	const correlationId = options.correlationId ?? crypto.randomUUID();
+	options: TranslateSpeechStreamRequestOptions = {},
+): ReadableStream<TranslateSpeechStreamChunk> {
 	const requestT0 = perfNowMs();
-	try {
-		const env = options.env ?? options.getEnv?.() ?? getServerEnv();
-		const mimeRaw = formData.get("mime");
-		const mime =
-			typeof mimeRaw === "string" && mimeRaw.length > 0
-				? mimeRaw
-				: "audio/webm";
-		const audio = coerceAudioFile(formData.get("audio"), mime);
-		const fromRaw = formData.get("from");
-		const toRaw = formData.get("to");
-		const from = typeof fromRaw === "string" ? fromRaw.trim() : "";
-		const to = typeof toRaw === "string" ? toRaw.trim() : "";
 
-		logTranslatePerf(correlationId, "request.parsed", {
-			msSinceRequestStart:
-				Math.round((perfNowMs() - requestT0) * 1000) / 1000,
-			mimeLen: mime.length,
-			fromLen: from.length,
-			toLen: to.length,
-			audioBytes: audio?.size ?? 0,
-			hasAudio: Boolean(audio),
-		});
+	return new ReadableStream<TranslateSpeechStreamChunk>({
+		async start(controller) {
+			let path = "unknown";
+			let ok = false;
+			let status = 200;
+			let errorMessage: string | undefined;
 
-		if (!audio || !from || !to) {
-			logTranslatePerf(correlationId, "request.validation_failed", {
-				reason: "missing_fields",
-			});
-			return failure(400, "Missing audio file or language codes.");
-		}
+			const finishLog = () => {
+				logTranslatePerf("request.done", {
+					ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
+					path,
+					ok,
+					status,
+					message: errorMessage,
+				});
+			};
 
-		const deniedMessage = translateAccessDeniedMessage(formData, env);
-		if (deniedMessage) {
-			logTranslatePerf(correlationId, "request.access_denied", {});
-			return failure(401, deniedMessage);
-		}
+			try {
+				const env = options.env ?? options.getEnv?.() ?? getServerEnv();
+				const mimeRaw = formData.get("mime");
+				const mime =
+					typeof mimeRaw === "string" && mimeRaw.length > 0
+						? mimeRaw
+						: "audio/webm";
+				const audio = coerceAudioFile(formData.get("audio"), mime);
+				const fromRaw = formData.get("from");
+				const toRaw = formData.get("to");
+				const from = typeof fromRaw === "string" ? fromRaw.trim() : "";
+				const to = typeof toRaw === "string" ? toRaw.trim() : "";
 
-		if (env.TRANSLATE_DEV_ECHO) {
-			const readT0 = perfNowMs();
-			const buf = await audio.arrayBuffer();
-			const readMs = Math.round((perfNowMs() - readT0) * 1000) / 1000;
-			logTranslatePerf(correlationId, "request.dev_echo.audio_buffer", {
-				ms: readMs,
-				audioBytes: buf.byteLength,
-			});
-			const encT0 = perfNowMs();
-			const res = success(buf, mimeContentType(mime));
-			logTranslatePerf(correlationId, "request.dev_echo.encoded", {
-				ms: Math.round((perfNowMs() - encT0) * 1000) / 1000,
-				outputBytes: buf.byteLength,
-				audioBase64Chars: res.audioBase64.length,
-			});
-			logTranslatePerf(correlationId, "request.done", {
-				ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
-				path: "dev_echo",
-				ok: true,
-			});
-			return res;
-		}
+				if (!audio || !from || !to) {
+					path = "validation";
+					status = 400;
+					errorMessage = "Missing audio file or language codes.";
+					controller.enqueue({
+						kind: "error",
+						status: 400,
+						message: errorMessage,
+					});
+					controller.close();
+					finishLog();
+					return;
+				}
 
-		const runPipeline = options.runPipeline ?? runSpeechTranslatePipeline;
-		const pipeT0 = perfNowMs();
-		const pipelineResult = await runPipeline(
-			{
-				audio,
-				from,
-				to,
-				mime,
-			},
-			{ correlationId },
-		);
-		const pipeMs = Math.round((perfNowMs() - pipeT0) * 1000) / 1000;
-		logTranslatePerf(correlationId, "request.pipeline_returned", {
-			ms: pipeMs,
-			ok: pipelineResult.ok,
-			status: pipelineResult.ok ? 200 : pipelineResult.status,
-			outputBytes: pipelineResult.ok ? pipelineResult.body.byteLength : 0,
-		});
+				const deniedMessage = translateAccessDeniedMessage(formData, env);
+				if (deniedMessage) {
+					path = "access_denied";
+					status = 401;
+					errorMessage = deniedMessage;
+					controller.enqueue({
+						kind: "error",
+						status: 401,
+						message: deniedMessage,
+					});
+					controller.close();
+					finishLog();
+					return;
+				}
 
-		if (!pipelineResult.ok) {
-			logTranslatePerf(correlationId, "request.done", {
-				ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
-				path: "pipeline",
-				ok: false,
-				status: pipelineResult.status,
-			});
-			return pipelineResult;
-		}
+				if (env.TRANSLATE_DEV_ECHO) {
+					path = "dev_echo";
+					const chunks = devEchoPcmChunks();
+					controller.enqueue({ kind: "transcript", text: "[dev echo]" });
+					controller.enqueue({ kind: "translation", text: "[dev echo]" });
+					controller.enqueue({
+						kind: "ready",
+						format: {
+							encoding: "pcm_s16le",
+							sampleRate: 44100,
+							channels: 1,
+						},
+					});
+					for (const pcm of chunks) {
+						controller.enqueue({ kind: "audio", pcm });
+					}
+					controller.enqueue({ kind: "complete" });
+					controller.close();
+					ok = true;
+					status = 200;
+					finishLog();
+					return;
+				}
 
-		const encT0 = perfNowMs();
-		const res = success(
-			pipelineResult.body,
-			pipelineResult.contentType,
-		);
-		logTranslatePerf(correlationId, "request.base64_encoded", {
-			ms: Math.round((perfNowMs() - encT0) * 1000) / 1000,
-			inputBytes: pipelineResult.body.byteLength,
-			audioBase64Chars: res.audioBase64.length,
-		});
-		logTranslatePerf(correlationId, "request.done", {
-			ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
-			path: "pipeline",
-			ok: true,
-		});
-		return res;
-	} catch (error) {
-		logTranslatePerf(correlationId, "request.error", {
-			ms: Math.round((perfNowMs() - requestT0) * 1000) / 1000,
-			name: error instanceof Error ? error.name : "unknown",
-		});
-		return normalizeThrownError(error);
-	}
+				path = "pipeline";
+				const runStream =
+					options.runPipelineStream ?? runSpeechTranslatePipelineStream;
+				const pipelineStream = runStream({
+					audio,
+					from,
+					to,
+					mime,
+				});
+
+				const reader = pipelineStream.getReader();
+				try {
+					for (;;) {
+						const { done, value } = await reader.read();
+						if (done) {
+							break;
+						}
+						controller.enqueue(value);
+					}
+				} catch (streamErr) {
+					const message =
+						streamErr instanceof Error && streamErr.message.trim()
+							? streamErr.message.trim()
+							: "Translation stream failed.";
+					controller.enqueue({
+						kind: "error",
+						status: 502,
+						message,
+					});
+				} finally {
+					reader.releaseLock();
+				}
+
+				controller.close();
+			} catch (error) {
+				path = "error";
+				ok = false;
+				if (error instanceof Error && error.message.trim()) {
+					if (error.message.startsWith("Invalid server environment:")) {
+						status = 500;
+						errorMessage = "Translation service is not configured correctly.";
+					} else {
+						status = 502;
+						errorMessage = error.message.trim();
+					}
+				} else {
+					status = 502;
+					errorMessage = "Translation failed.";
+				}
+				controller.enqueue(
+					normalizeThrownError(status, errorMessage ?? "Translation failed."),
+				);
+				controller.close();
+				finishLog();
+			}
+		},
+	});
 }

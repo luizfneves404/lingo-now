@@ -1,18 +1,10 @@
 import type { GroqCartesiaConfig } from "#/server/env";
 
-export type PipelineSuccess = {
-	ok: true;
-	body: ArrayBuffer;
-	contentType: string;
-};
-
 export type PipelineFailure = {
 	ok: false;
 	status: number;
 	message: string;
 };
-
-export type PipelineResult = PipelineSuccess | PipelineFailure;
 
 export type TranscribePortInput = {
 	audio: File;
@@ -42,9 +34,13 @@ export type SynthesizePortInput = {
 	correlationId: string;
 };
 
+export type SynthesizeStreamResult =
+	| PipelineFailure
+	| { ok: true; stream: ReadableStream<Uint8Array> };
+
 export type SynthesizePort = (
 	input: SynthesizePortInput,
-) => Promise<PipelineResult>;
+) => Promise<SynthesizeStreamResult>;
 
 export type SpeechTranslatePorts = {
 	transcribe: TranscribePort;
@@ -57,11 +53,26 @@ export type SpeechTranslateInput = {
 	from: string;
 	to: string;
 	mime: string;
+	correlationId?: string;
 };
 
-export type RunSpeechTranslatePipelineOptions = {
+export type TranslateSpeechStreamFormat = {
+	encoding: "pcm_s16le";
+	sampleRate: 44100;
+	channels: 1;
+};
+
+export type TranslateSpeechStreamChunk =
+	| { kind: "error"; status: number; message: string }
+	| { kind: "transcript"; text: string }
+	| { kind: "translation"; text: string }
+	| { kind: "ready"; format: TranslateSpeechStreamFormat }
+	| { kind: "audio"; pcm: Uint8Array }
+	| { kind: "complete" };
+
+export type RunSpeechTranslatePipelineStreamOptions = {
 	fetch?: typeof fetch;
 	config?: GroqCartesiaConfig | null;
-	correlationId?: string;
 	ports?: SpeechTranslatePorts;
+	connectWebSocket?: (url: string) => WebSocket;
 };

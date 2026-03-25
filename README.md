@@ -30,7 +30,9 @@ For deployed: password is: lingonowluiz
 
 ## Scripts
 
-- `pnpm test` — Vitest
+- `pnpm test` — Vitest (unit tests under `src/`)
+- `pnpm test:e2e` — Playwright browser test against real Groq + Cartesia (not part of `pnpm test`). Requires `GROQ_API_KEY`, `CARTESIA_API_KEY`, optional `TRANSLATE_ACCESS_PASSWORD`, and once: `pnpm exec playwright install chromium`. Fake microphone audio: `e2e/fixtures/I_have_friends.wav`.
+- `pnpm test:e2e:ui` — Playwright UI mode
 - `pnpm lint` / `pnpm format` / `pnpm check` — Biome
 
 ## UI components

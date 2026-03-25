@@ -9,7 +9,6 @@ export function perfNowMs(): number {
 }
 
 export function logTranslatePerf(
-	correlationId: string,
 	event: string,
 	fields: Record<string, unknown> = {},
 ): void {
@@ -17,7 +16,6 @@ export function logTranslatePerf(
 		JSON.stringify({
 			ts: new Date().toISOString(),
 			ns: NS,
-			correlationId,
 			event,
 			...fields,
 		}),
