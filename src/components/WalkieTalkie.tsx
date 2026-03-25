@@ -302,6 +302,22 @@ export default function WalkieTalkie() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-6">
+				{/* Access password */}
+				<label className="flex flex-col gap-2">
+					<span className="text-sm font-medium text-(--sea-ink)">
+						Access password
+					</span>
+					<input
+						type="password"
+						autoComplete="off"
+						className={inputClassName}
+						value={accessPassword}
+						disabled={isBusy || phase === "recording"}
+						onChange={(e) => setAccessPassword(e.target.value)}
+						placeholder="If the server requires TRANSLATE_ACCESS_PASSWORD"
+					/>
+				</label>
+
 				{/* Language selectors */}
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-end">
 					<label className="flex min-w-0 flex-1 flex-col gap-2">
@@ -349,52 +365,10 @@ export default function WalkieTalkie() {
 					</label>
 				</div>
 
-				{/* Access password */}
-				<label className="flex flex-col gap-2">
-					<span className="text-sm font-medium text-(--sea-ink)">
-						Access password
-					</span>
-					<input
-						type="password"
-						autoComplete="off"
-						className={inputClassName}
-						value={accessPassword}
-						disabled={isBusy || phase === "recording"}
-						onChange={(e) => setAccessPassword(e.target.value)}
-						placeholder="If the server requires TRANSLATE_ACCESS_PASSWORD"
-					/>
-				</label>
-
 				{/* Hidden test handles */}
 				<div className="hidden" aria-hidden>
 					<span data-testid="playback-status">{playbackStatus}</span>
 				</div>
-
-				{/* Transcript / translation */}
-				{(transcriptText || translationText) && (
-					<div className="flex flex-col gap-3 rounded-lg border border-(--line) bg-white/60 p-4 text-sm dark:bg-(--surface)">
-						<div>
-							<span className="font-medium text-(--sea-ink)">
-								Transcription
-							</span>
-							<p
-								className="mt-1 text-(--sea-ink-soft)"
-								data-testid="transcript-text"
-							>
-								{transcriptText || "—"}
-							</p>
-						</div>
-						<div>
-							<span className="font-medium text-(--sea-ink)">Translation</span>
-							<p
-								className="mt-1 text-(--sea-ink-soft)"
-								data-testid="translation-text"
-							>
-								{translationText || "—"}
-							</p>
-						</div>
-					</div>
-				)}
 
 				{/* Controls */}
 				<div className="flex flex-wrap items-center gap-3">
@@ -429,6 +403,32 @@ export default function WalkieTalkie() {
 						<span className="text-sm text-(--sea-ink-soft)">Playing…</span>
 					)}
 				</div>
+
+				{/* Transcript / translation */}
+				{(transcriptText || translationText) && (
+					<div className="flex flex-col gap-3 rounded-lg border border-(--line) bg-white/60 p-4 text-sm dark:bg-(--surface)">
+						<div>
+							<span className="font-medium text-(--sea-ink)">
+								Transcription
+							</span>
+							<p
+								className="mt-1 text-(--sea-ink-soft)"
+								data-testid="transcript-text"
+							>
+								{transcriptText || "—"}
+							</p>
+						</div>
+						<div>
+							<span className="font-medium text-(--sea-ink)">Translation</span>
+							<p
+								className="mt-1 text-(--sea-ink-soft)"
+								data-testid="translation-text"
+							>
+								{translationText || "—"}
+							</p>
+						</div>
+					</div>
+				)}
 
 				{/* Error */}
 				{error && (
