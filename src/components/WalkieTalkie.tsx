@@ -104,7 +104,6 @@ export default function WalkieTalkie() {
 	const [accessPassword, setAccessPassword] = useState("");
 	const [transcriptText, setTranscriptText] = useState("");
 	const [translationText, setTranslationText] = useState("");
-	const [hydrated, setHydrated] = useState(false);
 
 	// refs that don't need to trigger renders
 	const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -126,10 +125,6 @@ export default function WalkieTalkie() {
 				void null;
 			});
 		};
-	}, []);
-
-	useEffect(() => {
-		setHydrated(true);
 	}, []);
 
 	const closeAudioCtx = useCallback(async () => {
@@ -372,9 +367,6 @@ export default function WalkieTalkie() {
 
 				{/* Hidden test handles */}
 				<div className="hidden" aria-hidden>
-					<span data-testid="hydration-status">
-						{hydrated ? "ready" : "booting"}
-					</span>
 					<span data-testid="playback-status">{playbackStatus}</span>
 				</div>
 

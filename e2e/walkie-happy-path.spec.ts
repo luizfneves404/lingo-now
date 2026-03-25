@@ -5,17 +5,17 @@ test.describe("walkie-talkie happy path (real providers)", () => {
 		page,
 	}) => {
 		await page.goto("/?translateDevEcho=0");
-		await expect(page.getByTestId("hydration-status")).toHaveText("ready");
+
+		const fromSelect = page.getByRole("combobox", { name: /^From$/ });
+		const toSelect = page.getByRole("combobox", { name: /^To$/ });
+		await expect(fromSelect).toBeVisible();
+		await expect(fromSelect).toHaveValue("en");
+		await expect(toSelect).toHaveValue("pt");
 
 		const pwd = process.env.TRANSLATE_ACCESS_PASSWORD?.trim();
 		if (pwd) {
 			await page.getByPlaceholder(/TRANSLATE_ACCESS_PASSWORD/).fill(pwd);
 		}
-
-		const fromSelect = page.getByRole("combobox", { name: /^From$/ });
-		const toSelect = page.getByRole("combobox", { name: /^To$/ });
-		await expect(fromSelect).toHaveValue("en");
-		await expect(toSelect).toHaveValue("pt");
 
 		test.skip(
 			!process.env.GROQ_API_KEY?.trim() ||

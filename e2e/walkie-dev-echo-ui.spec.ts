@@ -9,7 +9,6 @@ test.describe("walkie-talkie happy path (dev echo)", () => {
 		await expect(
 			page.getByRole("heading", { name: "Lingo Now" }),
 		).toBeVisible();
-		await expect(page.getByTestId("hydration-status")).toHaveText("ready");
 
 		const pwd = process.env.TRANSLATE_ACCESS_PASSWORD?.trim();
 		if (pwd) {
