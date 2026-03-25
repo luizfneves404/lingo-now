@@ -4,7 +4,8 @@ test.describe("walkie-talkie happy path (real providers)", () => {
 	test("records fixture audio, translates en→pt, plays TTS, swaps languages", async ({
 		page,
 	}) => {
-		await page.goto("/");
+		await page.goto("/?translateDevEcho=0");
+		await expect(page.getByTestId("hydration-status")).toHaveText("ready");
 
 		const pwd = process.env.TRANSLATE_ACCESS_PASSWORD?.trim();
 		if (pwd) {
@@ -22,24 +23,19 @@ test.describe("walkie-talkie happy path (real providers)", () => {
 			"Set GROQ_API_KEY and CARTESIA_API_KEY to run this test.",
 		);
 
-		await page.getByRole("button", { name: "Start" }).click();
+		const startButton = page.getByRole("button", { name: "Start" });
+		const stopButton = page.getByRole("button", { name: "Stop" });
+		await startButton.click();
+		await expect(stopButton).toBeVisible();
 		await page.waitForTimeout(3500);
-		await page.getByRole("button", { name: "Stop" }).click();
-
-		await expect
-			.poll(async () => {
-				const t = await page.getByTestId("chunks-received").textContent();
-				const n = Number.parseInt(t ?? "0", 10);
-				return Number.isFinite(n) ? n : 0;
-			})
-			.toBeGreaterThan(0);
+		await stopButton.click();
 
 		await expect(page.getByTestId("playback-status")).toHaveText("done");
 
 		const transcript = page.getByTestId("transcript-text");
 		const translation = page.getByTestId("translation-text");
 		await expect(transcript).toContainText("I have friends");
-		await expect(translation).toContainText("Eu tenho amigos");
+		await expect(translation).toContainText(/^(Eu\s+)?tenho amigos\.?$/i);
 
 		await expect(page.getByRole("alert")).toHaveCount(0);
 

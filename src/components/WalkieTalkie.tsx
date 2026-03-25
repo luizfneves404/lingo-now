@@ -83,6 +83,17 @@ function pcm16leToAudioBuffer(
 	return buf;
 }
 
+function getTranslateDevEchoOverride(): string | null {
+	if (typeof window === "undefined") return null;
+	const value = new URLSearchParams(window.location.search).get(
+		"translateDevEcho",
+	);
+	if (value === "1" || value === "0" || value === "true" || value === "false") {
+		return value;
+	}
+	return null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function WalkieTalkie() {
@@ -93,6 +104,7 @@ export default function WalkieTalkie() {
 	const [accessPassword, setAccessPassword] = useState("");
 	const [transcriptText, setTranscriptText] = useState("");
 	const [translationText, setTranslationText] = useState("");
+	const [hydrated, setHydrated] = useState(false);
 
 	// refs that don't need to trigger renders
 	const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -114,6 +126,10 @@ export default function WalkieTalkie() {
 				void null;
 			});
 		};
+	}, []);
+
+	useEffect(() => {
+		setHydrated(true);
 	}, []);
 
 	const closeAudioCtx = useCallback(async () => {
@@ -144,6 +160,10 @@ export default function WalkieTalkie() {
 			form.append("to", toLang);
 			form.append("mime", mimeType);
 			form.append("accessPassword", accessPassword);
+			const translateDevEcho = getTranslateDevEchoOverride();
+			if (translateDevEcho) {
+				form.append("translateDevEcho", translateDevEcho);
+			}
 
 			try {
 				const stream = await translateSpeech({ data: form });
@@ -352,12 +372,15 @@ export default function WalkieTalkie() {
 
 				{/* Hidden test handles */}
 				<div className="hidden" aria-hidden>
+					<span data-testid="hydration-status">
+						{hydrated ? "ready" : "booting"}
+					</span>
 					<span data-testid="playback-status">{playbackStatus}</span>
 				</div>
 
 				{/* Transcript / translation */}
 				{(transcriptText || translationText) && (
-					<div className="flex flex-col gap-3 rounded-lg border border-(--line) bg-white/60 p-4 text-sm dark:bg-[var(--surface)]">
+					<div className="flex flex-col gap-3 rounded-lg border border-(--line) bg-white/60 p-4 text-sm dark:bg-(--surface)">
 						<div>
 							<span className="font-medium text-(--sea-ink)">
 								Transcription

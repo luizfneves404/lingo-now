@@ -4,11 +4,12 @@ test.describe("walkie-talkie happy path (dev echo)", () => {
 	test("records fixture audio, uses dev-echo, and ends with correct UI", async ({
 		page,
 	}) => {
-		await page.goto("/");
+		await page.goto("/?translateDevEcho=1");
 
 		await expect(
 			page.getByRole("heading", { name: "Lingo Now" }),
 		).toBeVisible();
+		await expect(page.getByTestId("hydration-status")).toHaveText("ready");
 
 		const pwd = process.env.TRANSLATE_ACCESS_PASSWORD?.trim();
 		if (pwd) {
@@ -20,9 +21,12 @@ test.describe("walkie-talkie happy path (dev echo)", () => {
 		await expect(fromSelect).toHaveValue("en");
 		await expect(toSelect).toHaveValue("pt");
 
-		await page.getByRole("button", { name: "Start" }).click();
+		const startButton = page.getByRole("button", { name: "Start" });
+		const stopButton = page.getByRole("button", { name: "Stop" });
+		await startButton.click();
+		await expect(stopButton).toBeVisible();
 		await page.waitForTimeout(750);
-		await page.getByRole("button", { name: "Stop" }).click();
+		await stopButton.click();
 
 		await expect(page.getByTestId("playback-status")).toHaveText("done");
 

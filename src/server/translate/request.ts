@@ -55,6 +55,15 @@ function normalizeThrownError(
 	return { kind: "error", status, message };
 }
 
+function parseTranslateDevEchoOverride(
+	value: FormDataEntryValue | null,
+): boolean | null {
+	if (typeof value !== "string") return null;
+	if (value === "1" || value === "true") return true;
+	if (value === "0" || value === "false") return false;
+	return null;
+}
+
 export function translateSpeechRequest(
 	formData: FormData,
 	options: TranslateSpeechStreamRequestOptions = {},
@@ -80,6 +89,9 @@ export function translateSpeechRequest(
 
 			try {
 				const env = options.env ?? options.getEnv?.() ?? getServerEnv();
+				const translateDevEchoOverride = parseTranslateDevEchoOverride(
+					formData.get("translateDevEcho"),
+				);
 				const mimeRaw = formData.get("mime");
 				const mime =
 					typeof mimeRaw === "string" && mimeRaw.length > 0
@@ -120,7 +132,7 @@ export function translateSpeechRequest(
 					return;
 				}
 
-				if (env.TRANSLATE_DEV_ECHO) {
+				if (translateDevEchoOverride ?? env.TRANSLATE_DEV_ECHO) {
 					path = "dev_echo";
 					const chunks = devEchoPcmChunks();
 					controller.enqueue({ kind: "transcript", text: "[dev echo]" });

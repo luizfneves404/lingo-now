@@ -303,7 +303,10 @@ describe("runSpeechTranslatePipelineStream (orchestrator, injected ports)", () =
 			),
 		);
 		expect(chunks.map((c) => c.kind)).toEqual(["transcript", "error"]);
-		const err = chunks.find((c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> => c.kind === "error");
+		const err = chunks.find(
+			(c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> =>
+				c.kind === "error",
+		);
 		expect(err?.status).toBe(502);
 		expect(err?.message).toContain("mt down");
 	});
@@ -336,7 +339,10 @@ describe("runSpeechTranslatePipelineStream (orchestrator, injected ports)", () =
 			"translation",
 			"error",
 		]);
-		const err = chunks.find((c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> => c.kind === "error");
+		const err = chunks.find(
+			(c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> =>
+				c.kind === "error",
+		);
 		expect(err?.status).toBe(502);
 		expect(err?.message).toContain("tts error");
 	});
@@ -537,7 +543,10 @@ describe("createGroqCartesiaPorts (adapter, mocked fetch + WebSocket)", () => {
 			),
 		);
 		expect(chunks.map((c) => c.kind)).toEqual(["transcript", "error"]);
-		const err = chunks.find((c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> => c.kind === "error");
+		const err = chunks.find(
+			(c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> =>
+				c.kind === "error",
+		);
 		expect(err?.status).toBe(502);
 		expect(err?.message).toContain("empty text");
 		expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -574,7 +583,10 @@ describe("createGroqCartesiaPorts (adapter, mocked fetch + WebSocket)", () => {
 			"translation",
 			"error",
 		]);
-		const err = chunks.find((c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> => c.kind === "error");
+		const err = chunks.find(
+			(c): c is Extract<TranslateSpeechStreamChunk, { kind: "error" }> =>
+				c.kind === "error",
+		);
 		expect(err?.status).toBe(502);
 		expect(err?.message).toMatch(/connect|text-to-speech/i);
 		expect(fetchMock).toHaveBeenCalledTimes(2);

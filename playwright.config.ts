@@ -12,29 +12,29 @@ if (existsSync(envDotenv)) dotenv.config({ path: envDotenv });
 const envLocal = join(root, ".env.local");
 if (existsSync(envLocal)) dotenv.config({ path: envLocal, override: true });
 
+const sharedUse = {
+	...devices["Desktop Chrome"],
+	baseURL: "http://127.0.0.1:3000",
+	permissions: ["microphone"],
+	launchOptions: {
+		args: [
+			"--use-fake-ui-for-media-stream",
+			"--use-fake-device-for-media-stream",
+			`--use-file-for-fake-audio-capture=${fakeAudioWav}`,
+		],
+	},
+};
+
 export default defineConfig({
 	testDir: "e2e",
 	timeout: 30_000,
 	expect: { timeout: 15_000 },
 	fullyParallel: false,
 	workers: 1,
-	use: {
-		baseURL: "http://localhost:3000",
-		...devices["Desktop Chrome"],
-		launchOptions: {
-			args: [
-				"--use-fake-ui-for-media-stream",
-				`--use-file-for-fake-audio-capture=${fakeAudioWav}`,
-			],
-		},
-	},
+	use: sharedUse,
 	webServer: {
-		command: "pnpm dev",
-		url: "http://localhost:3000",
+		command: "pnpm exec vite dev --port 3000",
+		url: "http://127.0.0.1:3000",
 		reuseExistingServer: !process.env.CI,
-		env: {
-			...process.env,
-			TRANSLATE_DEV_ECHO: "0",
-		},
 	},
 });
