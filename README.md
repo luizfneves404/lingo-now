@@ -45,3 +45,11 @@ Add shadcn components with:
 pnpm dlx shadcn@latest add <component>
 ```
 
+# Tech stack
+
+- React
+- Vite
+- Shadcn
+- Tanstack Start
+- Cloudflare Workers
+- Playwright
