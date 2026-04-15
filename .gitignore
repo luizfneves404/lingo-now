@@ -18,4 +18,4 @@ test-results/
 
 .idea
 
-*.dev.vars
+*.dev.vars*

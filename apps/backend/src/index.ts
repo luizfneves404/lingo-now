@@ -1,36 +1,35 @@
+import type { TranslateSpeechStreamChunk } from "@lingo-now/contracts/pipeline-types";
+import type { TranslateSpeechWireChunk } from "@lingo-now/contracts/wire-types";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { stream } from "hono/streaming";
-import {
-	serverEnvFromWorkerBindings,
-	type WorkerEnv,
-} from "./server/env";
-import type { TranslateSpeechStreamChunk } from "@lingo-now/contracts/pipeline-types";
+import { serverEnvFromWorkerBindings, type WorkerEnv } from "./server/env";
 import { translateSpeechRequest } from "./server/translate/request";
-import type { TranslateSpeechWireChunk } from "@lingo-now/contracts/wire-types";
 
 const app = new Hono<{ Bindings: WorkerEnv }>();
 
-app.get("/health", (c) => c.json({ ok: true }, 200));
-
-app.use("/rpc/*", async (c, next) => {
-	const configuredOrigin = c.env.CORS_ORIGIN?.trim();
-	const fallbackOrigins = ["http://127.0.0.1:3000", "http://localhost:3000"];
+app.use("*", async (c, next) => {
+	const configuredOrigin = c.env.CORS_ORIGIN;
 	const allowedOrigins = configuredOrigin
-		? configuredOrigin.split(",").map((value) => value.trim())
-		: fallbackOrigins;
+		? configuredOrigin.split(",").map((s) => s.trim())
+		: ["http://localhost:3000", "http://127.0.0.1:3000"];
 
-	return cors({
+	const corsMiddleware = cors({
 		origin: (origin) => {
-			if (!origin) return "";
-			return allowedOrigins.includes(origin) ? origin : "";
+			// If the incoming origin is in our list, return it.
+			return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
 		},
-		allowHeaders: ["Content-Type"],
-		allowMethods: ["POST", "OPTIONS"],
+		allowHeaders: ["Content-Type", "Authorization"], // Added Authorization just in case
+		allowMethods: ["POST", "GET", "OPTIONS"],
 		exposeHeaders: ["Content-Type"],
 		maxAge: 86400,
-	})(c, next);
+		credentials: true,
+	});
+
+	return corsMiddleware(c, next);
 });
+
+app.get("/health", (c) => c.json({ ok: true }, 200));
 
 function encodeChunk(
 	chunk: TranslateSpeechStreamChunk,
