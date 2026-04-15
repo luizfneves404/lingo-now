@@ -84,7 +84,7 @@ export function runSpeechTranslatePipelineStream(
 					if (options?.config !== undefined) {
 						cfg = options.config;
 					} else {
-						cfg = getGroqCartesiaConfig(getServerEnv());
+						cfg = getGroqCartesiaConfig(options?.serverEnv ?? getServerEnv());
 					}
 					if (!cfg) {
 						controller.enqueue({

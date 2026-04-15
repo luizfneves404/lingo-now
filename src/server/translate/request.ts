@@ -159,12 +159,15 @@ export function translateSpeechRequest(
 				path = "pipeline";
 				const runStream =
 					options.runPipelineStream ?? runSpeechTranslatePipelineStream;
-				const pipelineStream = runStream({
-					audio,
-					from,
-					to,
-					mime,
-				});
+				const pipelineStream = runStream(
+					{
+						audio,
+						from,
+						to,
+						mime,
+					},
+					{ serverEnv: env },
+				);
 
 				const reader = pipelineStream.getReader();
 				try {

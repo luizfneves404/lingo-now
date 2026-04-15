@@ -15,3 +15,7 @@ todos.json
 *.log
 test-results/
 .playwright-cache/
+
+.idea
+
+*.dev.vars

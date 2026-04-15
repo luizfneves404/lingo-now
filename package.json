@@ -2,12 +2,19 @@
   "name": "lingo-now",
   "private": true,
   "type": "module",
+  "workspaces": [
+    ".",
+    "apps/*"
+  ],
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
     "dev": "vite dev --port 3000",
+    "dev:backend": "pnpm --filter @lingo-now/backend dev",
+    "dev:all": "pnpm --parallel --filter lingo-now --filter @lingo-now/backend run dev",
     "build": "vite build && tsc --noEmit",
+    "build:backend": "pnpm --filter @lingo-now/backend cf-typegen",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
@@ -15,16 +22,17 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "deploy": "pnpm build && wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "deploy": "pnpm build",
+    "deploy:backend": "pnpm --filter @lingo-now/backend deploy",
+    "cf-typegen": "pnpm --filter @lingo-now/backend cf-typegen"
   },
   "dependencies": {
+    "hono": "^4.10.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-router-ssr-query": "latest",
-    "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.132.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -38,7 +46,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.6",
-    "@cloudflare/vite-plugin": "^1.30.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",

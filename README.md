@@ -19,7 +19,7 @@ Powered by Groq and Cartesia, Lingo Now uses a smart pipeline optimized for real
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev:all
 ```
 
 ## Build

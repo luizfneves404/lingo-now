@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type input, z } from "zod";
 
 const optionalTrimmedNonEmpty = z
 	.string()
@@ -49,11 +49,72 @@ export const serverEnvSchema = z
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
+/** Cloudflare Worker bindings for translate RPC (plus `CORS_ORIGIN` for HTTP). */
+export type WorkerEnv = input<typeof serverEnvSchema> & {
+	CORS_ORIGIN?: string;
+};
+
 let cached: ServerEnv | null = null;
+
+function parseServerEnv(record: input<typeof serverEnvSchema>) {
+	return serverEnvSchema.safeParse(record);
+}
+
+/**
+ * Builds validated {@link ServerEnv} for the translate RPC from Worker bindings,
+ * optional `process.env` fallbacks (local dev), and form-driven dev echo.
+ */
+export function serverEnvFromWorkerBindings(options: {
+	bindings: input<typeof serverEnvSchema>;
+	translateDevEchoFromForm?: FormDataEntryValue | null;
+}): ServerEnv {
+	const { bindings } = options;
+	const rawForm = options.translateDevEchoFromForm;
+	const translateDevEchoForm =
+		typeof rawForm === "string" &&
+		(rawForm === "1" || rawForm === "true");
+
+	const groqRaw = bindings.GROQ_API_KEY ?? process.env.GROQ_API_KEY;
+	const cartesiaRaw =
+		bindings.CARTESIA_API_KEY ?? process.env.CARTESIA_API_KEY;
+	const groq = groqRaw?.trim() ? groqRaw : undefined;
+	const cartesia = cartesiaRaw?.trim() ? cartesiaRaw : undefined;
+
+	const implicitEcho = !groq && !cartesia;
+
+	const record: input<typeof serverEnvSchema> = {
+		GROQ_API_KEY: groq,
+		CARTESIA_API_KEY: cartesia,
+		CARTESIA_VERSION:
+			bindings.CARTESIA_VERSION?.trim() ||
+			process.env.CARTESIA_VERSION?.trim() ||
+			undefined,
+		CARTESIA_MODEL_ID:
+			bindings.CARTESIA_MODEL_ID?.trim() ||
+			process.env.CARTESIA_MODEL_ID?.trim() ||
+			undefined,
+		TRANSLATE_DEV_ECHO:
+			translateDevEchoForm || implicitEcho
+				? "true"
+				: (bindings.TRANSLATE_DEV_ECHO ?? process.env.TRANSLATE_DEV_ECHO),
+		TRANSLATE_ACCESS_PASSWORD:
+			bindings.TRANSLATE_ACCESS_PASSWORD ??
+			process.env.TRANSLATE_ACCESS_PASSWORD,
+	};
+
+	const result = parseServerEnv(record);
+	if (!result.success) {
+		const msg = result.error.issues
+			.map((i) => `${i.path.join(".")}: ${i.message}`)
+			.join("; ");
+		throw new Error(`Invalid server environment: ${msg}`);
+	}
+	return result.data;
+}
 
 export function getServerEnv(): ServerEnv {
 	if (cached) return cached;
-	const result = serverEnvSchema.safeParse(process.env);
+	const result = parseServerEnv(process.env as input<typeof serverEnvSchema>);
 	if (!result.success) {
 		const msg = result.error.issues
 			.map((i) => `${i.path.join(".")}: ${i.message}`)

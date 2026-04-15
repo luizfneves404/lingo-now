@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serverEnvSchema } from "#/server/env";
+import { serverEnvFromWorkerBindings, serverEnvSchema } from "#/server/env";
 
 describe("serverEnvSchema", () => {
 	it("accepts TRANSLATE_DEV_ECHO without provider keys", () => {
@@ -76,6 +76,56 @@ describe("serverEnvSchema", () => {
 			const paths = r.error.issues.map((i) => i.path[0]);
 			expect(paths).toContain("GROQ_API_KEY");
 			expect(paths).toContain("CARTESIA_API_KEY");
+		}
+	});
+});
+
+describe("serverEnvFromWorkerBindings", () => {
+	it("enables implicit dev echo when provider keys are missing", () => {
+		const env = serverEnvFromWorkerBindings({
+			bindings: {},
+			translateDevEchoFromForm: null,
+		});
+		expect(env.TRANSLATE_DEV_ECHO).toBe(true);
+		expect(env.GROQ_API_KEY).toBeUndefined();
+	});
+
+	it("uses bindings and applies schema defaults for Cartesia", () => {
+		const env = serverEnvFromWorkerBindings({
+			bindings: {
+				GROQ_API_KEY: "g",
+				CARTESIA_API_KEY: "c",
+			},
+			translateDevEchoFromForm: null,
+		});
+		expect(env.TRANSLATE_DEV_ECHO).toBe(false);
+		expect(env.CARTESIA_VERSION).toBe("2025-04-16");
+		expect(env.CARTESIA_MODEL_ID).toBe("sonic-3");
+	});
+
+	it("honors translateDevEcho from form", () => {
+		const env = serverEnvFromWorkerBindings({
+			bindings: {},
+			translateDevEchoFromForm: "1",
+		});
+		expect(env.TRANSLATE_DEV_ECHO).toBe(true);
+	});
+
+	it("falls back to process.env when bindings omit keys", () => {
+		const prevG = process.env.GROQ_API_KEY;
+		const prevC = process.env.CARTESIA_API_KEY;
+		process.env.GROQ_API_KEY = "from-process";
+		process.env.CARTESIA_API_KEY = "from-process-c";
+		try {
+			const env = serverEnvFromWorkerBindings({
+				bindings: {},
+				translateDevEchoFromForm: null,
+			});
+			expect(env.GROQ_API_KEY).toBe("from-process");
+			expect(env.CARTESIA_API_KEY).toBe("from-process-c");
+		} finally {
+			process.env.GROQ_API_KEY = prevG;
+			process.env.CARTESIA_API_KEY = prevC;
 		}
 	});
 });

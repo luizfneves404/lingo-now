@@ -1,0 +1,16 @@
+{
+	"name": "@lingo-now/backend",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev --config wrangler.jsonc --port 8787",
+		"deploy": "wrangler deploy --config wrangler.jsonc",
+		"cf-typegen": "wrangler types --config wrangler.jsonc"
+	},
+	"dependencies": {
+		"hono": "^4.10.0"
+	},
+	"devDependencies": {
+		"wrangler": "^4.76.0"
+	}
+}

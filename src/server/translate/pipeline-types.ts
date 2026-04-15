@@ -1,4 +1,4 @@
-import type { GroqCartesiaConfig } from "#/server/env";
+import type { GroqCartesiaConfig, ServerEnv } from "#/server/env";
 
 export type PipelineFailure = {
 	ok: false;
@@ -73,6 +73,7 @@ export type TranslateSpeechStreamChunk =
 export type RunSpeechTranslatePipelineStreamOptions = {
 	fetch?: typeof fetch;
 	config?: GroqCartesiaConfig | null;
+	serverEnv?: ServerEnv;
 	ports?: SpeechTranslatePorts;
 	connectWebSocket?: (url: string) => WebSocket;
 };

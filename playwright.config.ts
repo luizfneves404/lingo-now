@@ -11,6 +11,8 @@ const envDotenv = join(root, ".env");
 if (existsSync(envDotenv)) dotenv.config({ path: envDotenv });
 const envLocal = join(root, ".env.local");
 if (existsSync(envLocal)) dotenv.config({ path: envLocal, override: true });
+const backendDevVars = join(root, "apps", "backend", ".dev.vars");
+if (existsSync(backendDevVars)) dotenv.config({ path: backendDevVars });
 
 const sharedUse = {
 	...devices["Desktop Chrome"],
@@ -32,9 +34,21 @@ export default defineConfig({
 	fullyParallel: false,
 	workers: 1,
 	use: sharedUse,
-	webServer: {
-		command: "pnpm exec vite dev --port 3000",
-		url: "http://127.0.0.1:3000",
-		reuseExistingServer: !process.env.CI,
-	},
+	webServer: [
+		{
+			command: "pnpm --filter @lingo-now/backend dev",
+			url: "http://localhost:8787/health",
+			reuseExistingServer: !process.env.CI,
+		},
+		{
+			command: "pnpm exec vite dev --port 3000",
+			url: "http://127.0.0.1:3000",
+			reuseExistingServer: !process.env.CI,
+			env: {
+				...process.env,
+				VITE_BACKEND_URL:
+					process.env.VITE_BACKEND_URL || "http://localhost:8787",
+			},
+		},
+	],
 });

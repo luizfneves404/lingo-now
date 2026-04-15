@@ -14,7 +14,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "#/components/ui/card";
-import { translateSpeech } from "#/server/translate/actions";
+import { translateSpeechViaRpc } from "#/lib/backend-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -160,13 +160,13 @@ export default function WalkieTalkie() {
 				form.append("translateDevEcho", translateDevEcho);
 			}
 
+			let streamFailed = false;
 			try {
-				const stream = await translateSpeech({ data: form });
+				const stream = await translateSpeechViaRpc(form);
 				let ctx: AudioContext | null = null;
 				let nextPlayTime = 0;
 
 				for await (const chunk of readStream(stream)) {
-					console.log("Received chunk kind:", chunk.kind);
 					if (chunk.kind === "transcript") {
 						setTranscriptText(chunk.text);
 					} else if (chunk.kind === "translation") {
@@ -190,9 +190,9 @@ export default function WalkieTalkie() {
 						nextPlayTime = startAt + ab.duration;
 					} else if (chunk.kind === "error") {
 						setError(chunk.message);
+						streamFailed = true;
 						break;
 					} else if (chunk.kind === "complete" && ctx) {
-						console.log("Waiting for audio to finish...");
 						const waitMs = Math.max(
 							0,
 							(nextPlayTime - ctx.currentTime) * 1000 + 80,
@@ -202,11 +202,9 @@ export default function WalkieTalkie() {
 					}
 				}
 
-				console.log("Stream loop exited!");
-
 				await closeAudioCtx();
 
-				if (!error) {
+				if (!streamFailed) {
 					// Swap languages for next speaker
 					setFromLang(toLang);
 					setToLang(fromLang);
@@ -222,7 +220,7 @@ export default function WalkieTalkie() {
 				inFlightRef.current = false;
 			}
 		},
-		[accessPassword, closeAudioCtx, error, fromLang, toLang],
+		[accessPassword, closeAudioCtx, fromLang, toLang],
 	);
 
 	// ── Recording controls ───────────────────────────────────────────────────

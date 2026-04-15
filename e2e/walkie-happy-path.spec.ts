@@ -18,9 +18,10 @@ test.describe("walkie-talkie happy path (real providers)", () => {
 		}
 
 		test.skip(
+			process.env.E2E_REAL_PROVIDERS !== "1" ||
 			!process.env.GROQ_API_KEY?.trim() ||
 				!process.env.CARTESIA_API_KEY?.trim(),
-			"Set GROQ_API_KEY and CARTESIA_API_KEY to run this test.",
+			"Set E2E_REAL_PROVIDERS=1 with GROQ_API_KEY and CARTESIA_API_KEY to run this test.",
 		);
 
 		const startButton = page.getByRole("button", { name: "Start" });
