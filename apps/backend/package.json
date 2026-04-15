@@ -3,8 +3,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "wrangler dev --config wrangler.jsonc --port 8787",
-		"deploy": "wrangler deploy --config wrangler.jsonc",
+		"dev": "wrangler dev --config wrangler.jsonc --port 8787 --env development",
+		"deploy": "wrangler deploy --config wrangler.jsonc --env production",
 		"cf-typegen": "wrangler types --config wrangler.jsonc",
 		"test": "vitest run --config vitest.config.ts"
 	},

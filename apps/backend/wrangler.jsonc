@@ -4,10 +4,22 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2025-09-02",
 	"compatibility_flags": ["nodejs_compat"],
-	"vars": {
-		"CORS_ORIGIN": "https://lingo-now.pages.dev"
-	},
-	"secrets": {
-		"required": ["GROQ_API_KEY", "CARTESIA_API_KEY", "TRANSLATE_ACCESS_PASSWORD"]
+	"env": {
+		"production": {
+			"vars": {
+				"CORS_ORIGIN": "https://lingo-now.pages.dev"
+			},
+			"secrets": {
+				"required": ["GROQ_API_KEY", "CARTESIA_API_KEY", "TRANSLATE_ACCESS_PASSWORD"]
+			}
+		},
+		"development": {
+			"vars": {
+				"CORS_ORIGIN": "http://localhost,capacitor://localhost,http://localhost:5173"
+			},
+			"secrets": {
+				"required": ["GROQ_API_KEY", "CARTESIA_API_KEY", "TRANSLATE_ACCESS_PASSWORD"]
+			}
+		}
 	}
 }

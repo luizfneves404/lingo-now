@@ -16,7 +16,7 @@ if (existsSync(backendDevVars)) dotenv.config({ path: backendDevVars });
 
 const sharedUse = {
 	...devices["Desktop Chrome"],
-	baseURL: "http://127.0.0.1:3000",
+	baseURL: "http://127.0.0.1:5173",
 	permissions: ["microphone"],
 	launchOptions: {
 		args: [
@@ -42,7 +42,7 @@ export default defineConfig({
 		},
 		{
 			command: "pnpm dev",
-			url: "http://127.0.0.1:3000",
+			url: "http://127.0.0.1:5173",
 			reuseExistingServer: !process.env.CI,
 			env: {
 				...process.env,

@@ -6,8 +6,10 @@
 		"#/*": "./src/*"
 	},
 	"scripts": {
-		"dev": "vite dev --port 3000",
+		"dev": "vite dev",
+		"dev:android": "LIVE_RELOAD=true pnpm exec cap run android",
 		"build": "vite build && tsc --noEmit",
+		"build:android": "pnpm run build && pnpm exec cap run android",
 		"preview": "vite preview",
 		"test": "vitest run --passWithNoTests",
 		"test:e2e": "playwright test",
@@ -17,6 +19,8 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
+		"@capacitor/android": "^8.3.0",
+		"@capacitor/core": "^8.3.0",
 		"@lingo-now/contracts": "workspace:*",
 		"@tailwindcss/vite": "^4.1.18",
 		"@tanstack/react-devtools": "latest",
@@ -36,6 +40,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.6",
+		"@capacitor/cli": "^8.3.0",
 		"@playwright/test": "^1.58.2",
 		"@tailwindcss/typography": "^0.5.16",
 		"@tanstack/devtools-vite": "latest",
