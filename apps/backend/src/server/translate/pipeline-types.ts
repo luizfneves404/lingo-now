@@ -1,4 +1,12 @@
 import type { GroqCartesiaConfig, ServerEnv } from "#/server/env";
+import type {
+	TranslateSpeechStreamChunk,
+	TranslateSpeechStreamFormat,
+} from "@lingo-now/contracts/pipeline-types";
+export type {
+	TranslateSpeechStreamChunk,
+	TranslateSpeechStreamFormat,
+} from "@lingo-now/contracts/pipeline-types";
 
 export type PipelineFailure = {
 	ok: false;
@@ -55,20 +63,6 @@ export type SpeechTranslateInput = {
 	mime: string;
 	correlationId?: string;
 };
-
-export type TranslateSpeechStreamFormat = {
-	encoding: "pcm_s16le";
-	sampleRate: 44100;
-	channels: 1;
-};
-
-export type TranslateSpeechStreamChunk =
-	| { kind: "error"; status: number; message: string }
-	| { kind: "transcript"; text: string }
-	| { kind: "translation"; text: string }
-	| { kind: "ready"; format: TranslateSpeechStreamFormat }
-	| { kind: "audio"; pcm: Uint8Array }
-	| { kind: "complete" };
 
 export type RunSpeechTranslatePipelineStreamOptions = {
 	fetch?: typeof fetch;

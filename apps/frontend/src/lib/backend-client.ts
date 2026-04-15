@@ -1,12 +1,8 @@
-import { hc } from "hono/client";
-import type { TranslateSpeechStreamChunk } from "#/server/translate/pipeline-types";
-import type { TranslateSpeechWireChunk } from "#/server/translate/wire-types";
-import type { BackendRpcType } from "../../apps/backend/src/index.ts";
+import type { TranslateSpeechStreamChunk } from "@lingo-now/contracts/pipeline-types";
+import type { TranslateSpeechWireChunk } from "@lingo-now/contracts/wire-types";
 
 const API_BASE_URL =
 	import.meta.env.VITE_BACKEND_URL?.trim() || "http://localhost:8787";
-
-const client = hc<BackendRpcType>(API_BASE_URL);
 
 function decodeWireChunk(
 	chunk: TranslateSpeechWireChunk,
@@ -23,8 +19,7 @@ function decodeWireChunk(
 export async function translateSpeechViaRpc(
 	form: FormData,
 ): Promise<ReadableStream<TranslateSpeechStreamChunk>> {
-	const endpoint = client.rpc.translate.$url();
-	const response = await fetch(endpoint, {
+	const response = await fetch(`${API_BASE_URL}/rpc/translate`, {
 		method: "POST",
 		body: form,
 	});

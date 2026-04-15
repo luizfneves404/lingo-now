@@ -1,4 +1,4 @@
-import type { TranslateSpeechStreamChunk } from "#/server/translate/pipeline-types";
+import type { TranslateSpeechStreamChunk } from "./pipeline-types";
 
 export type TranslateSpeechWireChunk =
 	| Exclude<TranslateSpeechStreamChunk, { kind: "audio" }>

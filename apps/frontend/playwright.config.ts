@@ -11,7 +11,7 @@ const envDotenv = join(root, ".env");
 if (existsSync(envDotenv)) dotenv.config({ path: envDotenv });
 const envLocal = join(root, ".env.local");
 if (existsSync(envLocal)) dotenv.config({ path: envLocal, override: true });
-const backendDevVars = join(root, "apps", "backend", ".dev.vars");
+const backendDevVars = join(root, "..", "backend", ".dev.vars");
 if (existsSync(backendDevVars)) dotenv.config({ path: backendDevVars });
 
 const sharedUse = {
@@ -41,7 +41,7 @@ export default defineConfig({
 			reuseExistingServer: !process.env.CI,
 		},
 		{
-			command: "pnpm exec vite dev --port 3000",
+			command: "pnpm dev",
 			url: "http://127.0.0.1:3000",
 			reuseExistingServer: !process.env.CI,
 			env: {

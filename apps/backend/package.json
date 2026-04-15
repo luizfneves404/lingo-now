@@ -5,12 +5,19 @@
 	"scripts": {
 		"dev": "wrangler dev --config wrangler.jsonc --port 8787",
 		"deploy": "wrangler deploy --config wrangler.jsonc",
-		"cf-typegen": "wrangler types --config wrangler.jsonc"
+		"cf-typegen": "wrangler types --config wrangler.jsonc",
+		"test": "vitest run --config vitest.config.ts"
 	},
 	"dependencies": {
-		"hono": "^4.10.0"
+		"@lingo-now/contracts": "workspace:*",
+		"hono": "^4.10.0",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
+		"@types/node": "^22.10.2",
+		"typescript": "^5.7.2",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "^3.0.5",
 		"wrangler": "^4.76.0"
 	}
 }

@@ -4,10 +4,10 @@ import { stream } from "hono/streaming";
 import {
 	serverEnvFromWorkerBindings,
 	type WorkerEnv,
-} from "../../../src/server/env";
-import type { TranslateSpeechStreamChunk } from "../../../src/server/translate/pipeline-types";
-import { translateSpeechRequest } from "../../../src/server/translate/request";
-import type { TranslateSpeechWireChunk } from "../../../src/server/translate/wire-types";
+} from "./server/env";
+import type { TranslateSpeechStreamChunk } from "@lingo-now/contracts/pipeline-types";
+import { translateSpeechRequest } from "./server/translate/request";
+import type { TranslateSpeechWireChunk } from "@lingo-now/contracts/wire-types";
 
 const app = new Hono<{ Bindings: WorkerEnv }>();
 
